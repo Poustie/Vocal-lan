@@ -1,0 +1,13 @@
+# Dépendances d'exécution (versions testées)
+customtkinter==6.0.0
+numpy==2.2.3
+sounddevice==0.5.6
+psutil==7.2.2
+pystray==0.19.5
+pillow==12.0.0
+# Suppression du bruit : aucune dependance Python. rnnoise.dll (BSD-3) est fournie dans third_party/rnnoise/ et chargee
+# par ctypes apres verification de son SHA-256 (ne PAS installer ni importer le paquet pyrnnoise).
+
+# Développement et fabrication de l'exécutable (inutile pour utiliser le programme)
+# pytest>=9
+# pyinstaller==6.22.3

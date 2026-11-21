@@ -1,0 +1,16 @@
+rnnoise.dll - provenance
+========================
+Bibliotheque : RNNoise (xiph/rnnoise), suppression de bruit par reseau de neurones recurrent.
+Licence      : BSD 3 clauses (voir LICENSE dans ce dossier).
+Origine      : fichier "rnnoise.dll" extrait tel quel (sans modification) de la roue Python
+               pyrnnoise 0.4.5 (pyrnnoise-0.4.5-py3-none-win_amd64.whl), telechargee depuis PyPI
+               (https://pypi.org/project/pyrnnoise/0.4.5/) le 10/11/2026 avec "pip download".
+               Chemin dans la roue : pyrnnoise-0.4.5.data/purelib/pyrnnoise/rnnoise.dll
+               (le paquet Python pyrnnoise lui-meme n'est PAS utilise ni importe).
+SHA-256 de la roue : f46015e5a58212d2883bf8e5a2cafb3c6b115176d8039f8340132cb24866b7da
+SHA-256 de la DLL  : 06770aeb8855ef942b5dcdb436f84dfdd5867b716ba4b4c8a2c66ade03197f31
+Taille de la DLL   : 14 825 472 octets (Windows x64)
+Note : la meme DLL est livree dans toutes les versions de pyrnnoise 0.2.7 a 0.4.5.
+       denoise.py verifie ce SHA-256 avant de charger la DLL (EXPECTED_SHA256) : si le fichier est
+       remplace, la suppression du bruit passe en "indisponible" (le son n'est pas coupe).
+Recompilation depuis les sources xiph/rnnoise : hors perimetre de la 2.1.

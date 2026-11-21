@@ -1,0 +1,13 @@
+# Builds PyInstaller
+build/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Réglages personnels (ancienne version)
+vocal_config.json
+vocal.log
+settings.json

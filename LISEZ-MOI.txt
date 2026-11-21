@@ -1,0 +1,138 @@
+VOCAL LAN - discuter à la voix sur le même réseau, sans serveur
+================================================================
+
+  +--------------------------------------------------------------------+
+  |  AU PREMIER LANCEMENT, WINDOWS PEUT AFFICHER UN ÉCRAN BLEU :       |
+  |  "Windows a protégé votre ordinateur".                             |
+  |  C'est NORMAL : Vocal LAN n'est pas un virus, il n'est simplement  |
+  |  pas "signé" (une signature payante que seuls les éditeurs ont).   |
+  |  -> Clique sur "Informations complémentaires",                     |
+  |     puis sur "Exécuter quand même". Une seule fois.                |
+  +--------------------------------------------------------------------+
+
+1. LANCER
+   Double-clique sur "Vocal LAN.exe". Rien à installer, pas besoin d'Internet.
+   Au premier lancement, un assistant te demande ton pseudo, ton casque
+   et teste ton micro.
+
+2. METS UN CASQUE
+   Sans casque, les haut-parleurs sont repris par le micro et ça siffle
+   (larsen). Le casque est vivement conseillé.
+
+3. LE PARE-FEU WINDOWS
+   Windows demande une autorisation au premier lancement : coche bien
+   "Réseaux privés" et clique sur "Autoriser l'accès".
+   Si tu as annulé, refusé ou si personne n'apparaît, ouvre l'aide "Ça ne marche
+   pas ?" dans le programme et clique sur "Autoriser Vocal LAN dans le
+   pare-feu" (Windows te demande une confirmation : c'est normal). Ce bouton
+   corrige aussi le cas où Windows a mémorisé un refus.
+
+4. PARLER SEULEMENT QUAND J'APPUIE SUR UNE TOUCHE (push-to-talk)
+   Clique sur la roue dentée (Réglages), section "Touches" : choisis
+   "Appuyer pour parler" (push-to-talk), puis une touche ou un bouton de
+   souris. Ça marche même quand tu es dans ton jeu.
+   (Si ton jeu est lancé "en administrateur", lance aussi Vocal LAN en
+   administrateur.)
+
+5. UN COPAIN NE M'ENTEND PAS (OU JE NE L'ENTENDS PAS)
+   - Vous devez tous être sur le même réseau (même box / même Wi-Fi / même switch).
+   - Vérifie que ton micro n'est pas coupé (le bouton micro est rouge ;
+     Ctrl+M le coupe ou le rétablit). Attention : couper le casque
+     (bouton Casque) coupe AUSSI ton micro, comme sur Discord.
+   - Sous chaque copain, "T'entend" veut dire qu'il te reçoit bien ;
+     "Ne te reçoit pas" veut dire que quelque chose bloque (souvent le
+     pare-feu, point 3).
+   - Vérifie le pare-feu (point 3) sur ton PC ET sur le sien.
+   - Tout le monde doit utiliser la même version de Vocal LAN.
+   - Si la découverte automatique échoue : ton copain clique sur "Copier mon
+     IP" (en haut à droite de sa fenêtre) et te l'envoie ; toi, clique sur
+     "Ajouter par IP" (sur l'écran "Personne d'autre pour l'instant", ou dans
+     "Ça ne marche pas ?", ou dans Réglages > Réglages avancés) et colle-la.
+   - Un VPN ou un réseau d'école peut bloquer la découverte : l'ajout
+     manuel de l'IP règle presque toujours le problème.
+   - Si tu branches un autre casque et qu'il n'apparaît pas : Réglages >
+     Audio > "Actualiser".
+
+6. FERMER ET QUITTER
+   La croix de la fenêtre range Vocal LAN près de l'horloge (l'icône est
+   parfois cachée derrière la petite flèche "^") : tu restes joignable.
+   Pour quitter vraiment : clic droit sur l'icône, puis "Quitter".
+   Relancer le programme alors qu'il tourne déjà ramène simplement sa
+   fenêtre.
+
+7. SUPPRESSION DU BRUIT ET QUALITÉ DE LA VOIX (ventilateur, clavier, souffle du micro)
+   Dans les Réglages, "Suppression du bruit" a quatre crans :
+     - Aucune : ta voix part telle quelle, sans aucun délai ajouté.
+     - Léger  : enlève un souffle ou un ventilateur régulier. Ajoute 5 ms.
+     - Normal : enlève aussi les claquements de clavier et de souris entre
+                tes mots, en gardant ta voix la plus naturelle possible.
+                Ajoute environ 25 ms.
+     - Fort   : nettoie au maximum, pour une pièce très bruyante. Ta voix
+                peut sonner un peu moins naturelle. Ajoute environ 25 ms,
+                comme Normal : les deux ont le même délai, seule la force du
+                nettoyage change.
+   Le délai ajouté est toujours affiché, en chiffres. Il passe en orange
+   au-delà de 30 ms (Normal et Fort, à 25 ms, restent en couleur normale,
+   avec la mention "À peine perceptible").
+   Plus le cran est haut, plus le bruit disparaît, mais plus tes amis
+   t'entendent avec un petit retard : 25 ms, c'est à peine perceptible
+   à deux, mais ça peut gêner dans une discussion très rapide.
+   Pour comparer, clique sur "Je m'entends" : tu écoutes ta voix comme tes
+   amis l'entendent, et tu peux basculer entre "Sans filtre" et "Avec
+   filtre". Si ton micro est coupé ou si l'envoi est fermé (touche
+   "appuyer pour parler" relâchée, filtre de bruit manuel fermé), personne
+   ne t'entend : "Avec filtre" reste alors silencieux, "Sans filtre" non.
+   Les deux barres "Avant" et "Après" montrent ce que le filtre retire.
+   Sur l'écran principal, le bouton "Bruit réduit" (vert) coupe le filtre
+   en un clic, même en pleine partie ; coupé, il devient "Réduire le bruit"
+   (gris) et un clic le rétablit. S'il passe en orange ("Bruit réduit :
+   arrêté"), le filtre est tombé en panne : ta voix passe sans traitement.
+
+   Style de voix : "Naturelle" (par défaut) garde ta voix telle qu'elle
+   est, en coupant seulement les grondements graves. "Plus claire" rend
+   le volume plus régulier, la voix plus nette et adoucit les "s". Aucun
+   des deux n'ajoute de délai.
+
+   Dans Réglages > Réglages avancés > "Ma voix, réglages fins" :
+     - "Couper les grondements graves" (Douce ou Forte) ;
+     - "Filtre de bruit manuel" : l'ancien réglage de sensibilité du micro.
+       Il est grisé avec Normal et Fort (une seule porte à la fois), et
+       gardé pour Aucune et Léger ;
+     - "Éviter que ta voix sature" ;
+     - "Égaliser le volume des amis" : à la réception, remonte un peu ceux
+       qu'on entend mal et baisse ceux qui crient (jamais au point de
+       remonter leur bruit de fond).
+   Si ton micro sature (ta voix grésille chez tes amis), une alerte
+   "Ton micro sature" s'affiche : baisse le gain du micro ou éloigne-toi.
+
+   Limites à connaître : les crans Normal et Fort distinguent la voix du
+   bruit. Un son tenu (chant, note de musique, sifflement, sirène) ou un
+   chuchotement sans vraie voix peut être pris pour du bruit et s'éteindre
+   au bout d'un instant. Pour chanter, jouer de la musique ou chuchoter,
+   choisis Aucune ou Léger. Ça ne sépare pas non plus deux voix : une télé
+   qui parle derrière toi reste audible.
+   Si le filtre ne peut pas démarrer, ta voix passe normalement (sans
+   traitement) et un message te l'explique : tu ne seras jamais coupé.
+
+   Nettoyer la voix d'un ami : sur la carte d'un ami, le bouton "Nettoyer sa
+   voix" enlève le bruit de SON micro (chez toi uniquement). Ça ajoute environ
+   25 ms pour cet ami seulement. Tu peux le faire pour 3 amis au maximum en
+   même temps ; au-delà, ou si le nettoyage ne peut pas démarrer, le bouton
+   affiche "En pause" avec l'explication, et le nettoyage reprend tout seul
+   dès qu'une place se libère. Le réglage est retenu pour chaque ami.
+
+   Pour tout remettre comme avant la version 2.1 : Réglages avancés >
+   "Tout désactiver" (suppression du bruit sur Aucune, voix Naturelle,
+   grondements, limiteur et filtre de bruit manuel coupés : ta voix part
+   brute). Le volume des amis n'est pas touché.
+
+8. OÙ SONT MES RÉGLAGES ?
+   Dans %APPDATA%\Vocal LAN (copie ce texte dans la barre d'adresse de
+   l'explorateur). Le fichier vocal.log est utile si tu demandes de l'aide.
+   Pour tout remettre à zéro, quitte le programme (clic droit sur l'icône près
+   de l'horloge > "Quitter") puis supprime settings.json.
+   Ne copie pas settings.json d'un PC à l'autre : il contient l'identité de
+   ton installation, et deux PC avec la même ne se verraient pas.
+
+Version pour développeurs : "lancer.bat" lance le programme avec Python
+(Python 3.11 requis).
