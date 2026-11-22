@@ -121,6 +121,15 @@ VOCAL LAN - discuter à la voix sur le même réseau, sans serveur
    affiche "En pause" avec l'explication, et le nettoyage reprend tout seul
    dès qu'une place se libère. Le réglage est retenu pour chaque ami.
 
+   Dans ma pièce : si un ami est dans la MÊME pièce que toi (vous parlez par
+   Vocal LAN tout en étant côte à côte), son micro capte aussi ta voix et te la
+   renvoie en écho dans ton casque. Sur sa carte, le bouton "Dans ma pièce"
+   retire ta voix de son flux : tu ne t'entends plus. Il faut que lui l'active
+   aussi chez lui, sur ta carte, pour qu'il ne s'entende pas non plus. Aucun
+   retard n'est ajouté. Parle seul 2 ou 3 secondes au début : le filtre apprend
+   le trajet, puis il se recale tout seul. Casque obligatoire pour les deux. Le
+   réglage est retenu pour chaque ami.
+
    Pour tout remettre comme avant la version 2.1 : Réglages avancés >
    "Tout désactiver" (suppression du bruit sur Aucune, voix Naturelle,
    grondements, limiteur et filtre de bruit manuel coupés : ta voix part

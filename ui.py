@@ -1733,7 +1733,7 @@ class PeerRow(ctk.CTkFrame, Diff):
         self.me = peer_id is None
         self.grid_columnconfigure(1, weight=1)
         self.avatar = Avatar(self, 48, SURFACE)
-        self.avatar.grid(row=0, column=0, rowspan=2 if not self.me else 1, padx=(14, 12),
+        self.avatar.grid(row=0, column=0, rowspan=3 if not self.me else 1, padx=(14, 12),
                          pady=(12, 12), sticky="n" if not self.me else "")
         info = ctk.CTkFrame(self, fg_color="transparent")
         info.grid(row=0, column=1, sticky="ew", pady=(12, 0 if not self.me else 12))
@@ -1771,7 +1771,7 @@ class PeerRow(ctk.CTkFrame, Diff):
             self.clean_btn = ctk.CTkButton(self, text="Nettoyer sa voix", width=118, height=30,
                                            corner_radius=9, fg_color=SURFACE_3, hover_color=BORDER,
                                            font=font(12), command=self._toggle_clean)
-            self.clean_btn.grid(row=1, column=3, padx=(0, 14), pady=(2, 12), sticky="e")
+            self.clean_btn.grid(row=1, column=3, padx=(0, 14), pady=(2, 4), sticky="e")
             self._clean_tip = ""
             Tooltip(self.clean_btn, lambda: self._clean_tip)
             self._muted = False
@@ -1779,6 +1779,14 @@ class PeerRow(ctk.CTkFrame, Diff):
             self._clean_idle = False
             self._clean_shown = None
             self._clean_msg = ("", 0.0, "")
+            self.room_btn = ctk.CTkButton(self, text="Dans ma pièce", width=118, height=30,
+                                          corner_radius=9, fg_color=SURFACE_3, hover_color=BORDER,
+                                          font=font(12), command=self._toggle_room)
+            self.room_btn.grid(row=2, column=3, padx=(0, 14), pady=(0, 12), sticky="e")
+            self._room_tip = ""
+            Tooltip(self.room_btn, lambda: self._room_tip)
+            self._room = False
+            self._room_shown = None
 
     # -- actions utilisateur ---------------------------------------------------
     def _volume_changed(self, v):
@@ -1814,6 +1822,26 @@ class PeerRow(ctk.CTkFrame, Diff):
         self._clean = want                       # retour visuel immédiat (le moteur confirme au tick suivant)
         self._clean_msg = ("", 0.0, "")
         self._paint_clean()
+
+    def _toggle_room(self):
+        """Bascule « Dans ma pièce » : cet ami est dans la même pièce, on retire MA voix de son flux (plus d'écho)."""
+        want = not self._room
+        fn = getattr(self.app.engine, "set_peer_room", None)
+        if fn is None:
+            return
+        try:
+            fn(self.peer_id, want)
+        except Exception as exc:  # noqa: BLE001
+            self.app.toast(getattr(exc, "message_fr", None) or "Impossible d'activer « Dans ma pièce » pour l'instant.", 5)
+            return
+        self._room = want                         # retour visuel immédiat (le moteur confirme au tick suivant)
+        self._paint_room()
+
+    def _paint_room(self):
+        if self._room:
+            self.upd(self.room_btn, text="Écho retiré", fg_color=GREEN_BG, hover_color=GREEN_BG_HOVER, text_color=GREEN)
+        else:
+            self.upd(self.room_btn, text="Dans ma pièce", fg_color=SURFACE_3, hover_color=BORDER, text_color=TEXT)
 
     def _paint_clean(self):
         if self._clean and self._clean_idle:
@@ -1910,6 +1938,23 @@ class PeerRow(ctk.CTkFrame, Diff):
                                if clean else
                                f"Réduit le bruit de {who} dans TON casque.\n"
                                f"+{CLEAN_PEER_MS} ms sur sa voix seulement (rien ne change pour lui).")
+        room = getattr(pv, "room", None)               # None : moteur sans « Dans ma pièce »
+        if room is None:
+            if self._room_shown is not False:
+                self._room_shown = False
+                self.room_btn.grid_remove()
+        else:
+            if self._room_shown is not True:
+                self._room_shown = True
+                self.room_btn.grid()
+            self._room = bool(room)
+            self._paint_room()
+            who2 = clip(name, 16)
+            self._room_tip = (f"Ta voix est retirée du son de {who2} dans ton casque (son micro la capte).\n"
+                              f"Il doit l'activer aussi chez lui. Clique pour arrêter."
+                              if room else
+                              f"À activer si {who2} est dans la même pièce que toi : tu ne t'entendras plus dans ton casque.\n"
+                              f"Il doit l'activer aussi de son côté. Aucun retard ajouté.")
         stxt = " · ".join(states)
         if stxt and speak:
             stxt = "  ·  " + stxt

@@ -24,6 +24,7 @@ import audiodev
 import denoise
 import dsp
 import netutil
+import room_echo
 from settings import DENOISE_LEVELS, VOICE_STYLES, Settings, _clean_text
 
 log = logging.getLogger("vocal.engine")
@@ -65,6 +66,7 @@ MSG_CLEAN_UNAVAILABLE = ("Le nettoyage des voix n'est pas disponible sur cet ord
 MSG_CLEAN_LIMIT = ("Tu nettoies déjà {n} voix, c'est le maximum. Arrête le nettoyage d'un ami pour reprendre "
                    "celui-ci.")
 NET_REFRESH_S = 30.0       # énumération complète des interfaces (psutil : GIL gardé ~7-10 ms) au plus toutes les 30 s
+ROOM_PARTS = 64            # « Dans ma pièce » : 64 x 5 ms = 320 ms de décalage couverts (réseau + tampon + salle)
 CLEAN_GAP = 200            # trames (1 s) sans audio d'un ami : on remet son nettoyeur à zéro
 
 
@@ -115,6 +117,7 @@ class PeerView:
     clean_active: bool = False  # nettoyage réellement en marche (limite de 3, DLL, panne)
     noisy: bool = False         # bruit de fond élevé chez cet ami (suggestion)
     clean_reason: str | None = None   # « Nettoyer » demandé mais pas en marche : pourquoi (phrase française prête)
+    room: bool = False          # « Dans ma pièce » activé pour cet ami (mémorisé)
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,7 +181,7 @@ class _Peer:
     __slots__ = ("sid", "id", "addr", "name", "r_muted", "r_deaf", "seq", "sent", "playing", "starved",
                  "target", "stable", "q", "volume", "muted", "level", "speaking", "hold", "ping",
                  "last_pong", "seen", "joined", "recv", "lost", "cleaner", "leveler", "clean", "gap",
-                 "clean_err")
+                 "clean_err", "room", "roomc")
 
     def __init__(self, sid: bytes, addr, name: str, min_buffer: int, now: float):
         self.sid, self.id, self.addr, self.name = sid, sid.hex(), addr, name
@@ -197,6 +200,8 @@ class _Peer:
         self.clean = False
         self.gap = 0                   # trames consécutives sans audio de cet ami
         self.clean_err = False
+        self.room = False              # « Dans ma pièce » demandé (mémorisé)
+        self.roomc = None              # room_echo.RoomCanceller : retire MA voix du flux de cet ami, posé hors du callback
 
 
 def _make_cues() -> dict[str, np.ndarray]:
@@ -281,6 +286,8 @@ class Engine:
         self._cue_pos = 0
         # pairs
         self._lock = threading.Lock()       # protège seulement les modifications de la table des pairs
+        self._room_bank = room_echo.RefBank(FRAME, ROOM_PARTS)   # historique de MON micro (référence d'écho)
+        self._rooms = 0                      # amis « dans ma pièce » : 0 = rien à calculer dans le callback
         self._clean_lock = threading.Lock()  # « Nettoyer sa voix » : limite de 3 et pose/retrait des nettoyeurs (jamais pris par le callback)
         self._peers: dict[bytes, _Peer] = {}
         self._targets: tuple = ()
@@ -647,6 +654,27 @@ class Engine:
         self._pref(peer_id, p)["clean"] = on
         self._touch()
 
+    def _count_rooms(self) -> None:
+        self._rooms = sum(1 for q in self._peers.values() if q.roomc is not None)
+
+    def set_peer_room(self, peer_id: str, on: bool) -> None:
+        """« Dans ma pièce » : cet ami est dans la même pièce que moi, son micro capte ma voix et me la renvoie en écho.
+        On retire de SON flux la part de MA voix (filtre adaptatif, mon micro en référence). Aucune latence ajoutée.
+        Mémorisé par ami ; à activer aussi chez lui pour qu'il ne t'entende pas non plus."""
+        on = bool(on)
+        p = self._peer_by_hex(peer_id)
+        if p is not None:
+            if on and p.roomc is None:
+                if self._rooms == 0:
+                    self._room_bank.reset()        # le callback ne l'alimentait pas : repart d'un historique vide
+                p.roomc = room_echo.RoomCanceller(self._room_bank)
+            elif not on:
+                p.roomc = None
+            p.room = on
+            self._count_rooms()
+        self._pref(peer_id, p)["room"] = on
+        self._touch()
+
     def _pref(self, peer_id: str, p: _Peer | None) -> dict:
         d = self.settings.peer_prefs.setdefault(peer_id, {"volume": 1.0, "muted": False, "clean": False, "name": ""})
         if p:
@@ -798,6 +826,8 @@ class Engine:
             mon = self._monitor
             if mon:
                 np.copyto(self._raw, x)                                  # copie « Sans filtre », non retardée
+            if self._rooms:
+                self._room_bank.push(x)                                  # « Dans ma pièce » : mon micro, avant la chaîne
 
             # chaîne d'émission : passe-haut -> suppresseur de bruit -> porte, volume, voix, limiteur
             chain = self._chain
@@ -807,6 +837,10 @@ class Engine:
                 self._reset_req = False
                 chain.reset()
                 self._flush_slot()
+                self._room_bank.reset()                                  # le décalage micro -> amis a changé : on réapprend
+                for q in self._peers.values():
+                    if q.roomc is not None:
+                        q.roomc.reset()
             chain.process_pre(x)
             ep = float(np.dot(x, x))
             if not ep < 1e30:                                            # NaN / inf : un état de filtre empoisonné
@@ -890,6 +924,9 @@ class Engine:
                         p.speaking = p.hold > 0
                     continue
                 np.copyto(tmp, f, casting="unsafe")
+                rc = p.roomc
+                if rc is not None:                 # « Dans ma pièce » : on retire MA voix captée par son micro (avant tout le reste)
+                    rc.process(tmp)
                 cl = p.cleaner
                 if cl is not None:                 # « Nettoyer sa voix » : seulement sur de vraies trames
                     if p.gap > CLEAN_GAP:
@@ -1151,8 +1188,13 @@ class Engine:
         if pref:
             p.volume, p.muted = float(pref.get("volume", 1.0)), bool(pref.get("muted", False))
             p.clean = bool(pref.get("clean", False))
+            p.room = bool(pref.get("room", False))
         p.leveler = dsp.Leveler()
         p.leveler.enabled = self.settings.recv_leveler
+        if p.room:
+            if self._rooms == 0:
+                self._room_bank.reset()
+            p.roomc = room_echo.RoomCanceller(self._room_bank)
         why = None
         if p.clean:
             if not denoise.available():
@@ -1172,6 +1214,7 @@ class Engine:
             peers[sid] = p
             self._peers = peers
             self._targets = tuple(q.addr for q in peers.values())
+            self._count_rooms()
         self._emit("peer_joined", f"{name} est connecté.", p.id, name)
         if why:        # « Nettoyer » mémorisé mais impossible : on le dit (la carte de l'ami affiche « en pause »)
             self._emit("denoise_failed", f"Le nettoyage de la voix de {name} est en pause. {why}", p.id, name, code="peer")
@@ -1186,6 +1229,7 @@ class Engine:
             del peers[sid]
             self._peers = peers
             self._targets = tuple(q.addr for q in peers.values())
+            self._count_rooms()
             if not peers:
                 self._alone_since = time.monotonic()
         self._emit("peer_left", f"{p.name} est parti.", p.id, p.name)
@@ -1352,5 +1396,5 @@ class Engine:
         return PeerView(id=p.id, name=p.name, ip=p.addr[0], speaking=alive and p.speaking, level=to_meter(p.level) if alive else 0.0,
                         volume=p.volume, muted=p.muted, remote_muted=p.r_muted, remote_deafened=p.r_deaf,
                         quality=quality, ping_ms=ping, loss_pct=round(loss, 1), buffer_ms=p.target * FRAME_MS,
-                        hears_me=hears, clean=p.clean, clean_active=active,
+                        hears_me=hears, clean=p.clean, clean_active=active, room=p.room,
                         noisy=bool(p.leveler is not None and p.leveler.noisy), clean_reason=reason)
