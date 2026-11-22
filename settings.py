@@ -204,6 +204,8 @@ class Settings:
                 vol = _finite(v.get("volume", 1.0), 1.0, 0.0, 2.0)      # NaN / infini / énorme : 1.0 ou borné
                 prefs[pid] = {"volume": vol, "muted": v.get("muted") is True, "clean": v.get("clean") is True,
                               "name": _clean_text(v.get("name", "")) if isinstance(v.get("name", ""), str) else ""}
+                if v.get("room") is True:             # « Dans ma pièce » : n'est écrit que s'il est actif (fichiers inchangés sinon)
+                    prefs[pid]["room"] = True
         self.peer_prefs = prefs
 
     # ---------- sauvegarde ----------

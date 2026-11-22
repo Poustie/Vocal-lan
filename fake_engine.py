@@ -78,6 +78,7 @@ class _PeerView:
     clean_active: bool = False
     clean_reason: str | None = None
     noisy: bool = False
+    room: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -410,7 +411,8 @@ class FakeEngine:
             quality=p["quality"], ping_ms=ping, loss_pct=p["loss"], buffer_ms=p["buffer"],
             hears_me=p["hears_me"], clean=clean, clean_active=clean and self._denoise_error is None and not self.force_clean_reason,
             clean_reason=(self.force_clean_reason if clean else None),
-            noisy=bool(p.get("noisy", False)) and not clean)
+            noisy=bool(p.get("noisy", False)) and not clean,
+            **({"room": bool(pref.get("room", False))} if "room" in PeerView.__dataclass_fields__ else {}))
 
     def snapshot(self) -> Snapshot:
         self._advance()
@@ -578,6 +580,11 @@ class FakeEngine:
         pref["clean"] = on
         self._dirty()
         self.calls.append(("set_peer_clean", peer_id, on))
+
+    def set_peer_room(self, peer_id: str, on: bool) -> None:
+        self.settings.peer_prefs.setdefault(peer_id, {})["room"] = bool(on)
+        self._dirty()
+        self.calls.append(("set_peer_room", peer_id, bool(on)))
 
     def set_buffer_mode(self, mode: str) -> None:
         if mode in ("auto", "reactive", "stable"):

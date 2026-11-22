@@ -18,7 +18,7 @@ if os.path.isfile(os.path.join(rn, "rnnoise.dll")):
         if os.path.isfile(os.path.join(rn, name)):
             datas.append((os.path.join(rn, name), os.path.join("third_party", "rnnoise")))
 hidden = [m for m in ("ui", "wizard", "tray", "fake_engine", "engine", "hotkeys", "audiodev", "netutil", "settings",
-                      "denoise", "dsp")
+                      "denoise", "dsp", "room_echo")
           if os.path.exists(os.path.join(here, m + ".py"))]
 hidden += ["pystray._win32", "PIL._tkinter_finder", "_sounddevice_data"]
 
