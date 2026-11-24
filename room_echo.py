@@ -75,6 +75,10 @@ class RefBank:
         self.P = int(parts)
         self.win = np.zeros(2 * self.B, F32)
         self.H = np.zeros((2 * self.P, self.K), C64)
+        self.HP = np.zeros((self.P, self.K), F32)  # |X|^2 de chaque trame gardée (évite de le recalculer)
+        self._X = np.zeros(self.K, C64)            # tampons préalloués : rien n'est alloué dans le callback
+        self._xp = np.zeros(self.K, F32)
+        self._dp = np.zeros(self.K, F32)
         self.pos = 0
         self.pw = np.zeros(self.K, F32)          # somme sur les P trames de |X|^2, par raie
         self._pw_tick = 0
@@ -87,6 +91,7 @@ class RefBank:
     def reset(self):
         self.win.fill(0)
         self.H.fill(0)
+        self.HP.fill(0)
         self.pw.fill(0)
         self.pos = 0
         self.pow_now = self.pow_s = 0.0
@@ -97,20 +102,25 @@ class RefBank:
         B, P = self.B, self.P
         self.win[:B] = self.win[B:]
         self.win[B:] = x
-        X = np.fft.rfft(self.win).astype(C64, copy=False)
+        X = np.fft.rfft(self.win, out=self._X)
         pos = self.pos + 1
         if pos == P:
             pos = 0
-        old = self.H[pos]
-        self.pw += (X.real * X.real + X.imag * X.imag) - (old.real * old.real + old.imag * old.imag)
+        xp, dp = self._xp, self._dp               # |X|^2 = re^2 + im^2 (mêmes arrondis que le calcul direct)
+        np.multiply(X.real, X.real, out=xp)
+        np.multiply(X.imag, X.imag, out=dp)
+        xp += dp
+        hp = self.HP[pos]                         # |X|^2 de la trame qui sort de l'historique
+        np.subtract(xp, hp, out=dp)
+        self.pw += dp                             # une seule addition : la somme incrémentale ne dérive pas autrement
+        hp[:] = xp
         self.H[pos] = X
         self.H[pos + P] = X
         self.pos = pos
         self._pw_tick += 1
         if self._pw_tick >= 512:                  # recalage : évite toute dérive des sommes incrémentales
             self._pw_tick = 0
-            H = self.H[:P]
-            self.pw[:] = (H.real * H.real + H.imag * H.imag).sum(axis=0)
+            np.sum(self.HP, axis=0, out=self.pw)
         p = _pow(x)
         self.pow_now = p
         self.pow_s = 0.5 * self.pow_s + 0.5 * p
@@ -141,7 +151,15 @@ class RoomCanceller:
         self.W = np.zeros((P, K), C64)
         self._t1 = np.zeros((P, K), C64)
         self._t2 = np.zeros((P, K), C64)
-        self._zp = np.zeros(2 * B, F32)
+        self._zp = np.zeros(2 * B, F32)      # [zéros | erreur] : moitié basse toujours nulle
+        self._Y = np.zeros(K, C64)           # tampons préalloués : rien n'est alloué dans le callback
+        self._y2 = np.zeros(2 * B, F32)
+        self._e = np.zeros(B, F32)
+        self._E = np.zeros(K, C64)
+        self._den = np.zeros(K, F32)
+        self._gk = np.zeros(K, C64)
+        self._G = np.zeros((P, K), C64)
+        self._w = np.zeros((max(1, int(constrain_per_frame)), 2 * B), F32)
         self._la = max(0, int(lookahead_frames))
         self._lbuf = np.zeros((self._la + 1, B), F32) if self._la else None
         self._con = 0
@@ -175,9 +193,9 @@ class RoomCanceller:
             d[:] = self._lbuf[0]
         X = bank.view()
         np.multiply(self.W, X, out=self._t1)
-        Y = self._t1.sum(axis=0)
-        y = np.fft.irfft(Y, 2 * B)[B:].astype(F32, copy=False)
-        e = d - y                                        # erreur « pleine » (sert à adapter)
+        Y = np.einsum("pk->k", self._t1, out=self._Y)    # = somme sur les partitions (np.sum alloue ~66 Ko)
+        y = np.fft.irfft(Y, 2 * B, out=self._y2)[B:]
+        e = np.subtract(d, y, out=self._e)               # erreur « pleine » (sert à adapter)
 
         d_p = _pow(d)
         e_p = _pow(e)
@@ -195,20 +213,31 @@ class RoomCanceller:
         self.adapting = adapt
         if adapt:
             self.n_adapt += 1
-            E = np.fft.rfft(np.concatenate((self._zp[:B], e.astype(F32, copy=False)))).astype(C64, copy=False)
+            self._zp[B:] = e
+            E = np.fft.rfft(self._zp, out=self._E)
             boost = 1.0 + BOOST * max(0.0, 1.0 - self.n_adapt / BOOST_FRAMES)   # filtre neuf : on apprend vite
-            gk = (self.mu * boost / (bank.pw + F32(1e3 * P))) * E       # (K,)
+            den = np.add(bank.pw, F32(1e3 * P), out=self._den)
+            np.divide(F32(self.mu * boost), den, out=den)
+            gk = np.multiply(E, den, out=self._gk)                      # (K,)
             np.conjugate(X, out=self._t2)
-            np.multiply(self._t2, gk, out=self._t2)
-            self.W += self._t2
+            self._G[:] = gk                              # gk recopié sur chaque partition : la diffusion (K,) -> (P, K)
+            np.multiply(self._t2, self._G, out=self._t1)  # passerait par un tampon interne de ~66 Ko
+            self.W += self._t1
             # contrainte temporelle (le filtre ne doit pas « s'enrouler ») sur quelques partitions par trame
             n = self.n_con
             j0 = self._con
-            idx = [(j0 + i) % P for i in range(n)]
             self._con = (j0 + n) % P
-            w = np.fft.irfft(self.W[idx], 2 * B)
-            w[:, B:] = 0
-            self.W[idx] = np.fft.rfft(w).astype(C64, copy=False)
+            if j0 + n <= P:                              # cas courant : partitions contiguës, sans allocation
+                Wn = self.W[j0:j0 + n]
+                w = np.fft.irfft(Wn, 2 * B, out=self._w[:n])
+                w[:, B:] = 0
+                for i in range(n):                       # ligne par ligne : la FFT groupée alloue ~200 Ko
+                    np.fft.rfft(w[i], out=Wn[i])
+            else:
+                idx = [(j0 + i) % P for i in range(n)]
+                w = np.fft.irfft(self.W[idx], 2 * B)
+                w[:, B:] = 0
+                self.W[idx] = np.fft.rfft(w).astype(C64, copy=False)
             # garde-fou 2 : le gain total du trajet reste raisonnable
             en = float(np.vdot(self.W, self.W).real)
             if en > self.gain_max2:
@@ -222,17 +251,17 @@ class RoomCanceller:
             self.alpha += (target - self.alpha) * (0.3 if target < self.alpha else 0.05)
         elif not active:
             self.alpha += (1.0 - self.alpha) * 0.01
-        out = d - F32(self.alpha) * y
+        ay = np.multiply(y, F32(self.alpha), out=self._e)          # l'erreur ne sert plus : tampon réutilisé
+        np.subtract(d, ay, out=d)                                    # sortie, en place
 
         # -- suppression résiduelle (garde-fou 4) -------------------------------------------
         if self.suppress:
             ysig = self.y_s > 2.0 * self.d_floor                  # un écho est attendu maintenant (selon le filtre)
-            only_leak = ysig and _pow(out) < 3.0 * (self.d_floor + 0.5 * self.y_s)
+            only_leak = ysig and _pow(d) < 3.0 * (self.d_floor + 0.5 * self.y_s)
             tg = self.g_min if only_leak else 1.0
             self.g += (tg - self.g) * (0.7 if tg < self.g else 0.1)
             if self.g < 0.999:
-                out *= F32(self.g)
-        d[:] = out
+                d *= F32(self.g)
 
     def stats(self):
         erle = 10 * math.log10((self.d_s + 1.0) / (self.e_s + 1.0))

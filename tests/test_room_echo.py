@@ -144,3 +144,32 @@ def test_cout_du_calcul_par_trame():
             rc.process(d)
         ts.append(time.perf_counter() - t0)
     assert np.percentile(ts[50:], 90) < 0.002, np.percentile(ts[50:], 90)     # 3 amis : moins de 2 ms (sur 5)
+
+
+def test_presque_rien_n_est_alloue_par_trame():
+    """Callback audio : pas de gros tableau temporaire (l'ancienne version allouait ~220 Ko par trame pour 3 amis).
+    Il reste les copies internes des FFT de numpy (~10 Ko)."""
+    import tracemalloc
+    bank = re_.RefBank(FRAME, 64)
+    rcs = [re_.RoomCanceller(bank) for _ in range(3)]
+    rng = np.random.default_rng(5)
+    mic = (rng.standard_normal(FRAME * 600) * 3000).astype(np.float32)
+    for i in range(200):                                  # préchauffage (plans FFT en cache) ; ma voix : adaptation
+        bank.push(mic[i * FRAME:(i + 1) * FRAME])
+        for rc in rcs:
+            rc.process(np.zeros(FRAME, np.float32))
+    frames = [np.zeros(FRAME, np.float32) for _ in range(3 * 400)]
+    peaks = []
+    tracemalloc.start()
+    try:
+        for i in range(400):
+            tracemalloc.reset_peak()
+            base = tracemalloc.get_traced_memory()[0]
+            bank.push(mic[(200 + i) * FRAME:(201 + i) * FRAME])
+            for j, rc in enumerate(rcs):
+                rc.process(frames[3 * i + j])
+            peaks.append(tracemalloc.get_traced_memory()[1] - base)
+    finally:
+        tracemalloc.stop()
+    assert any(rc.n_adapt > 0 for rc in rcs)
+    assert np.median(peaks) < 16 * 1024, np.median(peaks)

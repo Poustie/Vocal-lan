@@ -883,6 +883,21 @@ def test_peer_clean_button_tooltip_and_toggle(make_app):
     assert s.peer_prefs["m1"]["clean"] is False and row.clean_btn.cget("text") == "Nettoyer sa voix"
 
 
+def test_peer_room_button_toggle(make_app):
+    """« Dans ma pièce » : bouton par ami, mémorisé, texte et aide qui changent."""
+    app, eng, s, hk = make_app("full")
+    pump(app)
+    row = app.rows["m1"]
+    assert row.room_btn.cget("text") == "Dans ma pièce" and "même pièce" in row._room_tip
+    row.room_btn.invoke()
+    pump(app, 0.2)
+    assert s.peer_prefs["m1"]["room"] is True and row.room_btn.cget("text") == "Écho retiré"
+    assert ("set_peer_room", "m1", True) in eng.calls
+    row.room_btn.invoke()
+    pump(app, 0.2)
+    assert s.peer_prefs["m1"]["room"] is False and row.room_btn.cget("text") == "Dans ma pièce"
+
+
 def test_peer_clean_limit_gives_clear_message(make_app):
     app, eng, s, hk = make_app("clean3")
     pump(app)

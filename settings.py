@@ -16,7 +16,7 @@ import sys
 import threading
 from dataclasses import dataclass, field
 
-VERSION = "2.1.0"
+VERSION = "2.2.0"
 SCHEMA = 1
 log = logging.getLogger("vocal.settings")
 
