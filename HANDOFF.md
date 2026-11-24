@@ -9,8 +9,8 @@ Dernière mise à jour : 24/11/2026, par Claude Code.
   - les tests de Yann, posés par erreur à la racine, sont dans `tests/` ;
   - `room_echo.py` n'alloue presque plus rien dans le callback audio (environ 10 Ko par trame au lieu de 220 Ko pour 3 amis), avec un résultat identique au bit près ;
   - le test de budget du callback refait jusqu'à 3 mesures quand la machine est chargée.
-- L'exe de `dist\` est encore la 2.1 : le reconstruire avec `build.bat` avant de le distribuer.
-- L'exe n'est pas publié sur GitHub.
+- L'exe 2.2.0 est publié en Release GitHub `v2.2.0` (`Vocal LAN.zip`, 47 Mo). Lien à donner : https://github.com/Poustie/Vocal-lan/releases/latest
+- Pour une nouvelle version : changer `VERSION` dans `settings.py`, lancer `build.bat`, puis créer une Release avec le zip de `dist\`.
 
 ## Points d'attention
 
@@ -21,5 +21,4 @@ Dernière mise à jour : 24/11/2026, par Claude Code.
 ## Décisions à prendre
 
 - **Licence** : aucune pour l'instant, donc personne n'a le droit de réutiliser le code. Une licence MIT a été proposée. RNNoise garde sa licence BSD.
-- **Release GitHub** : publier `Vocal LAN.zip` (environ 47 Mo) pour un téléchargement en un clic, après avoir reconstruit l'exe.
 - **Vérification automatique** : ajouter GitHub Actions pour lancer les tests sur chaque PR.
