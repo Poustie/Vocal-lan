@@ -12,14 +12,11 @@ Dernière mise à jour : 25/11/2026, par Claude Code.
   - le test de budget du callback refait jusqu'à 3 mesures quand la machine est chargée.
 - 250 tests passent sur `main`.
 
-## À régler en premier
-
-- **25/11/2026 à 09:45, `vocal.py` et `lancer.bat` ont été remplacés sur le disque** par une ancienne version (le `vocal.py` d'une seule pièce, avant l'interface actuelle, et un `lancer.bat` qui télécharge Python 3.12). L'origine est inconnue. Ces changements ne sont **pas** commités. L'exe publié n'est pas touché. Ne pas les commiter sans l'accord du propriétaire du dépôt ; pour revenir à la bonne version : `git checkout -- vocal.py lancer.bat`.
-
 ## Points d'attention
 
 - Aucune vérification automatique des PR sur GitHub : lancer les tests avant de fusionner.
 - « Dans ma pièce » n'a été testé qu'avec un écho simulé, jamais avec deux PC dans une vraie pièce.
+- Le 25/11/2026, `vocal.py` et `lancer.bat` ont été écrasés sur le disque par une très ancienne version, d'origine inconnue. Ils ont été remis depuis git. Si ça se reproduit : `git checkout -- vocal.py lancer.bat`.
 - `gh` n'est pas installé : la Release v2.2.0 a été créée à la main sur le site GitHub.
 
 ## Décisions à prendre
